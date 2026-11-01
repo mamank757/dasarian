@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard Iklim Wajo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#060b13;--card:#0e1829;--line:#1d2b44;--tx:#e8eef7;--mu:#8fa3bf;--ok:#00ff88;--warn:#ffb020;--bad:#ff5d5d;--bl:#4aa3ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 'Segoe UI',system-ui,sans-serif;padding:16px;max-width:1100px;margin:auto}
+h1{font-size:1.2rem;margin:0}h2{font-size:.95rem;margin:0 0 10px;color:#71f7ff}.sub{color:var(--mu);font-size:.75rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px;overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}.kpi b{display:block;font-size:1.4rem}.kpi span{color:var(--mu);font-size:.72rem}
+table{width:100%;border-collapse:collapse;font-size:.8rem}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--mu);font-weight:600}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;min-width:150px;background:#223}.bar i{display:block}
+.b0{background:var(--warn)}.b1{background:#5b6b85}.b2{background:var(--bl)}
+.tag{padding:2px 8px;border-radius:99px;font-size:.7rem;font-weight:700}.t-ok{background:#00ff8822;color:var(--ok)}.t-w{background:#ffb02022;color:var(--warn)}.t-b{background:#ff5d5d22;color:var(--bad)}
+.note{font-size:.72rem;color:var(--mu);margin-top:8px}#err{display:none;background:#ff5d5d22;border:1px solid var(--bad);padding:10px;border-radius:10px;margin-top:14px}
+.ch{position:relative;height:230px}
+</style></head><body>
+<h1> Dashboard Iklim &amp; Prakiraan — Kabupaten Wajo</h1>
+<div class="sub" id="upd">Memuat…</div>
+<div id="err"></div>
+<div class="grid" id="kpi"></div>
+<div class="card"><h2>Prakiraan 7 hari (model, per hari)</h2><div class="ch"><canvas id="c7"></canvas></div></div>
+<div class="card"><h2>Prakiraan 3 dasarian ke depan (analog ENSO)</h2><div id="das"></div>
+<div class="note">Bar: <span class="tag t-w">bawah normal</span> <span class="tag" style="background:#5b6b8533">normal</span> <span class="tag" style="background:#4aa3ff33;color:var(--bl)">atas normal</span>. Hit-rate = uji leave-one-out terhadap kejadian lampau; acuan tebakan acak ≈ 33%.</div></div>
+<div class="card"><h2>Prakiraan 3 bulan ke depan</h2><div id="bln"></div></div>
+<div class="card"><h2>Hujan teramati per dasarian (12 terakhir)</h2><div class="ch"><canvas id="cd"></canvas></div><div class="note">Oranye = ≥50 mm (indikator awal musim hujan). Pudar = data dasarian belum lengkap.</div></div>
+<div class="card"><h2>Gelombang atmosfer (NOAA OLR)</h2><div id="gel"></div></div>
+<div class="note">Sumber: Open-Meteo, NOAA CPC/OLR, telemetri BBWS Pompengan Jeneberang. Bukan pengganti prakiraan resmi BMKG. Data sebelum 2020 hanya dari 1 pos.</div>
+<script>
+const API='https://script.google.com/macros/s/AKfycbwkV9RJCorw1nFLiSr4rvaLShqu7opn8Id8xgZZ_DDUnTz8Wa9jTtA_A_jD_e4eh3ucsQ/exec';
+const $=id=>document.getElementById(id), N=(x,d=0)=>typeof x==='number'?x.toFixed(d):'—';
+const E=s=>String(s??'—').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+Chart.defaults.color='#8fa3bf';Chart.defaults.borderColor='#1d2b44';
+let ch={};
+function chart(id,cfg){ch[id]?.destroy();ch[id]=new Chart($(id),cfg)}
+const DAS={pB:15,pN:16,pA:17,k:5,a:13,l:20},BLN={pB:11,pN:12,pA:13,k:3,a:9,l:15};
+function tag(l){if(typeof l!=='number')return'<span class="tag t-b">tidak ada uji</span>';
+ return l>=50?`<span class="tag t-ok">${l}% · ada skill</span>`:l>=40?`<span class="tag t-w">${l}% · lemah</span>`:`<span class="tag t-b">${l}% · ≈ acak</span>`}
+function bar(r,m){const a=r[m.pB],b=r[m.pN],c=r[m.pA];if(typeof a!=='number')return'<span class="sub">'+E(r[r.length-1])+'</span>';
+ return`<div class="bar" title="bawah ${a}% · normal ${b}% · atas ${c}%"><i class="b0" style="width:${a}%"></i><i class="b1" style="width:${b}%"></i><i class="b2" style="width:${c}%"></i></div><span class="sub">${a} / ${b} / ${c} %</span>`}
+function tabel(sets,m,withTgl){
+ let h='<table><tr><th>Periode</th><th>Prediktor</th><th>Peluang bawah / normal / atas</th><th>Klim → analog (mm)</th><th>Hit-rate uji</th></tr>';
+ const n=Math.max(...sets.map(s=>s.rows.length));
+ for(let i=0;i<n;i++)sets.forEach(s=>{const r=s.rows[i];if(!r)return;
+  h+=`<tr><td><b>${E(r[0])}</b>${withTgl?'<br><span class="sub">'+E(r[1])+'</span>':''}</td><td>${s.nama}</td><td>${bar(r,m)}</td><td>${N(r[m.k])} → ${N(r[m.a])}</td><td>${tag(r[m.l])}</td></tr>`});
+ return h+'</table>'}
+async function muat(){
+ try{
+  const j=await (await fetch(API+'?t='+Date.now())).json(),L=j.lembar;
+  $('err').style.display='none';
+  $('upd').textContent='Diperbarui: '+new Date(j.diperbarui).toLocaleString('id-ID',{timeZone:'Asia/Makassar'})+' WITA · segarkan otomatis tiap 10 menit';
+  const hr=L.Cuaca_Harian,st=L.Status_ENSO,gl=L.Gelombang_Terkini;
+  const tot=hr.reduce((s,r)=>s+(+r[1]||0),0),aktif=gl.filter(r=>r[6]==='Ya').length;
+  const dasAll=[...L.Prakiraan_Dasarian,...L.Prakiraan_Dasarian_N34],best=Math.max(0,...dasAll.map(r=>+r[20]||0));
+  $('kpi').innerHTML=[[st[0]?N(st[0][1],1):'—','ONI terakhir'],[st[1]?N(st[1][1],1)+' °C':'—','SSTA Niño 3.4 (mingguan)'],
+   [N(tot,1)+' mm','Total hujan model 7 hari'],[aktif+' / '+gl.length,'Gelombang aktif'],[best+'%','Hit-rate terbaik dasarian']]
+   .map(([a,b])=>`<div class="kpi"><b>${a}</b><span>${b}</span></div>`).join('');
+  chart('c7',{data:{labels:hr.map(r=>String(r[0]).slice(5)),datasets:[
+   {type:'bar',label:'Hujan (mm)',data:hr.map(r=>r[1]),backgroundColor:'#4aa3ff',yAxisID:'y'},
+   {type:'line',label:'Awan rata-rata (%)',data:hr.map(r=>r[4]),borderColor:'#ffb020',yAxisID:'y1',tension:.3}]},
+   options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true},y1:{position:'right',min:0,max:100,grid:{display:false}}}}});
+  $('das').innerHTML=tabel([{nama:'ONI (Agu)',rows:L.Prakiraan_Dasarian},{nama:'Niño 3.4 (Okt)',rows:L.Prakiraan_Dasarian_N34}],DAS,true)+
+   (best<45?'<div class="note">⚠️ Hit-rate setara tebakan acak: untuk dasarian, gunakan klimatologi dan pengamatan, bukan prakiraan presisi.</div>':'');
+  $('bln').innerHTML=tabel([{nama:'ONI (Agu)',rows:L.Prakiraan_Bulanan_ENSO},{nama:'Niño 3.4 (Okt)',rows:L.Prakiraan_Bulanan_N34}],BLN,false);
+  const wd=L.Wajo_Dasarian;
+  chart('cd',{type:'bar',data:{labels:wd.map(r=>r[0]+' '+r[1]),datasets:[{label:'Hujan (mm)',data:wd.map(r=>r[2]),
+   backgroundColor:wd.map(r=>(r[8]==='Ya'?'#ffb020':'#4aa3ff')+(r[5]==='Ya'?'':'55'))}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  $('gel').innerHTML='<table><tr><th>Gelombang</th><th>Data</th><th>Fase</th><th>Aktif</th><th>OLR (W/m²)</th><th>z (σ)</th><th>Keandalan</th><th>Dampak</th></tr>'+
+   gl.map(r=>`<tr><td><b>${E(r[1])}</b></td><td>${E(r[2])}</td><td>${E(r[5])}</td><td>${E(r[6])}</td><td>${N(r[7],1)}</td><td>${N(r[8],2)}</td><td>${E(r[10])}</td><td>${E(r[13])}</td></tr>`).join('')+'</table>';
+ }catch(e){$('err').style.display='block';$('err').textContent='Gagal memuat data: '+e.message+' — periksa URL API dan akses web app ("Siapa saja").'}
+}
+muat();setInterval(muat,600000);
+</script></body></html>
