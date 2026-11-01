@@ -1,0 +1,26 @@
+# Simpan sebagai .github/workflows/update-rmm.yml di repositori GitHub Pages Anda (yang berisi folder data/waves/).
+# Mengunduh indeks MJO RMM (BoM) tiap hari dan menyimpannya sebagai data/waves/rmm.txt,
+# yang dibaca Apps Script bila BoM menolak permintaan langsung dari Google.
+name: update-rmm
+on:
+  schedule:
+    - cron: '30 2 * * *'     # 02:30 UTC = 10:30 WITA
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rmm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unduh RMM
+        run: |
+          mkdir -p data/waves
+          curl -fsSL -A "Mozilla/5.0" -o data/waves/rmm.txt.tmp https://www.bom.gov.au/clim_data/IDCKGEM000/rmm.74toRealtime.txt
+          test $(wc -l < data/waves/rmm.txt.tmp) -gt 1000 && mv data/waves/rmm.txt.tmp data/waves/rmm.txt
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/waves/rmm.txt
+          git diff --staged --quiet || (git commit -m "Perbarui RMM" && git push)
