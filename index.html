@@ -16,19 +16,20 @@ table{width:100%;border-collapse:collapse;font-size:.8rem}th,td{padding:6px 8px;
 .note{font-size:.72rem;color:var(--mu);margin-top:8px}#err{display:none;background:#ff5d5d22;border:1px solid var(--bad);padding:10px;border-radius:10px;margin-top:14px}
 .ch{position:relative;height:230px}
 </style></head><body>
-<h1> Dashboard Iklim &amp; Prakiraan — Kabupaten Wajo</h1>
+<h1>🌾 Dashboard Iklim &amp; Prakiraan — Kabupaten Wajo</h1>
 <div class="sub" id="upd">Memuat…</div>
 <div id="err"></div>
 <div class="grid" id="kpi"></div>
 <div class="card"><h2>Prakiraan 7 hari (model, per hari)</h2><div class="ch"><canvas id="c7"></canvas></div></div>
 <div class="card"><h2>Prakiraan 3 dasarian ke depan (analog ENSO)</h2><div id="das"></div>
 <div class="note">Bar: <span class="tag t-w">bawah normal</span> <span class="tag" style="background:#5b6b8533">normal</span> <span class="tag" style="background:#4aa3ff33;color:var(--bl)">atas normal</span>. Hit-rate = uji leave-one-out terhadap kejadian lampau; acuan tebakan acak ≈ 33%.</div></div>
+<div class="card"><h2>Model gabungan ENSO + gelombang (MJO · Kelvin · Rossby)</h2><div id="mdl"></div><div class="note">Peluang dari tetangga terdekat pada kondisi prediktor terkini; uji leave-one-year-out. BSS &gt; 0 berarti lebih baik daripada klimatologi; ★ = varian terbaik. Tanpa ★, gunakan klimatologi.</div></div>
 <div class="card"><h2>Prakiraan 3 bulan ke depan</h2><div id="bln"></div></div>
 <div class="card"><h2>Hujan teramati per dasarian (12 terakhir)</h2><div class="ch"><canvas id="cd"></canvas></div><div class="note">Oranye = ≥50 mm (indikator awal musim hujan). Pudar = data dasarian belum lengkap.</div></div>
 <div class="card"><h2>Gelombang atmosfer (NOAA OLR)</h2><div id="gel"></div></div>
 <div class="note">Sumber: Open-Meteo, NOAA CPC/OLR, telemetri BBWS Pompengan Jeneberang. Bukan pengganti prakiraan resmi BMKG. Data sebelum 2020 hanya dari 1 pos.</div>
 <script>
-const API='https://script.google.com/macros/s/AKfycbzmJM-uPBBhxyKTwJtu14Filaq7XUOtLqgzNCw0k0nHxjLm7OXqdlgLi_v6gbJpdHJvjA/exec';
+const API='https://script.google.com/macros/s/AKfycbzzHP6Ayr4H2WVh0x9xr6petEPJT8Z3RBDC1of_mx8yOgSVz_RFy-ucn2_8n_5mBiCQtQ/exec';
 const $=id=>document.getElementById(id), N=(x,d=0)=>typeof x==='number'?x.toFixed(d):'—';
 const E=s=>String(s??'—').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 Chart.defaults.color='#8fa3bf';Chart.defaults.borderColor='#1d2b44';
@@ -54,7 +55,7 @@ async function muat(){
   const tot=hr.reduce((s,r)=>s+(+r[1]||0),0),aktif=gl.filter(r=>r[6]==='Ya').length;
   const dasAll=[...L.Prakiraan_Dasarian,...L.Prakiraan_Dasarian_N34],best=Math.max(0,...dasAll.map(r=>+r[20]||0));
   $('kpi').innerHTML=[[st[0]?N(st[0][1],1):'—','ONI terakhir'],[st[1]?N(st[1][1],1)+' °C':'—','SSTA Niño 3.4 (mingguan)'],
-   [N(tot,1)+' mm','Total hujan model 7 hari'],[aktif+' / '+gl.length,'Gelombang aktif'],[best+'%','Hit-rate terbaik dasarian']]
+   [(L.MJO_RMM_Terkini.length?'Fase '+L.MJO_RMM_Terkini.slice(-1)[0][3]+' · '+N(L.MJO_RMM_Terkini.slice(-1)[0][4],1):'—'),'MJO (RMM) terkini'],[N(tot,1)+' mm','Total hujan model 7 hari'],[aktif+' / '+gl.length,'Gelombang aktif'],[best+'%','Hit-rate terbaik dasarian']]
    .map(([a,b])=>`<div class="kpi"><b>${a}</b><span>${b}</span></div>`).join('');
   chart('c7',{data:{labels:hr.map(r=>String(r[0]).slice(5)),datasets:[
    {type:'bar',label:'Hujan (mm)',data:hr.map(r=>r[1]),backgroundColor:'#4aa3ff',yAxisID:'y'},
@@ -63,6 +64,10 @@ async function muat(){
   $('das').innerHTML=tabel([{nama:'ONI (Agu)',rows:L.Prakiraan_Dasarian},{nama:'Niño 3.4 (Okt)',rows:L.Prakiraan_Dasarian_N34}],DAS,true)+
    (best<45?'<div class="note">⚠️ Hit-rate setara tebakan acak: untuk dasarian, gunakan klimatologi dan pengamatan, bukan prakiraan presisi.</div>':'');
   $('bln').innerHTML=tabel([{nama:'ONI (Agu)',rows:L.Prakiraan_Bulanan_ENSO},{nama:'Niño 3.4 (Okt)',rows:L.Prakiraan_Bulanan_N34}],BLN,false);
+  const M=L.Model_Gelombang;let hm='<table><tr><th>Periode</th><th>Varian</th><th>Peluang bawah / normal / atas</th><th>Hit-rate</th><th>BSS</th><th></th></tr>';
+  M.forEach(r=>{const b=r[8],c=typeof b!=='number'?'':b>0.05?'t-ok':b>0?'t-w':'t-b';
+   hm+=`<tr><td><b>${E(r[0])}</b><br><span class="sub">${E(r[1])}</span></td><td>${E(r[2])}</td><td>${bar(r,{pB:4,pN:5,pA:6})}</td><td>${typeof r[7]==='number'?r[7]+'%':'—'}</td><td>${c?`<span class="tag ${c}">${N(b,3)}</span>`:'—'}</td><td>${r[9]==='Ya'?'★':''}</td></tr>`});
+  $('mdl').innerHTML=hm+'</table>';
   const wd=L.Wajo_Dasarian;
   chart('cd',{type:'bar',data:{labels:wd.map(r=>r[0]+' '+r[1]),datasets:[{label:'Hujan (mm)',data:wd.map(r=>r[2]),
    backgroundColor:wd.map(r=>(r[8]==='Ya'?'#ffb020':'#4aa3ff')+(r[5]==='Ya'?'':'55'))}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}}}});
