@@ -19146,3 +19146,4 @@
         2026          10          29 -0.20791781      -1.4222785               2   1.4373956      Gottschalk10_method:_OLR_&_ACCESS_wind      
         2026          10          30 -0.25074822      -1.1127225               2   1.1406254      Gottschalk10_method:_OLR_&_ACCESS_wind      
         2026          10          31 -0.47792763      -1.2398685               2   1.3287922      Gottschalk10_method:_OLR_&_ACCESS_wind      
+        2026          11           1 -0.55537975      -1.4705272               2   1.5719086      Gottschalk10_method:_OLR_&_ACCESS_wind      
