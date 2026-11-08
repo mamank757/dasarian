@@ -130,6 +130,13 @@
   </div>
 
   <div class="card">
+    <h2>Proyeksi Dasarian Berjalan (Teramati + Prakiraan 7 Hari)</h2>
+    <div class="table-container" id="pry"></div>
+    <div class="note">Total yang sudah diketahui = hujan teramati + prakiraan model untuk hari yang tercakup. Hari yang belum tercakup diwakili tahun-tahun historis. Peluang memperhitungkan galat prakiraan secara kasar. Ini memakai informasi nyata dasarian berjalan, sehingga biasanya lebih tajam daripada analog ENSO untuk dasarian yang sudah sebagian diketahui.</div>
+    <div class="note warn" id="pryStatus"></div>
+  </div>
+
+  <div class="card">
     <h2>Prakiraan 3 Dasarian Ke Depan (Analog ENSO)</h2>
     <div class="table-container" id="das"></div>
     <div class="note">
@@ -175,7 +182,7 @@
   </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbzanUAio_glDxFxuXuGmRstWdn1jv_bgHMVBcz-HVXbS4Dwr7OrPguBIey0UD_oo1ItxA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbwJJYwVuJ4cSRtIUm95SyH8YbMwpg7yQ1qdhQrHFxtcq6znBrqHX21VoyLcBx2RDBpHXg/exec';
 
 const $ = id => document.getElementById(id);
 const N = (x, d = 0) => typeof x === 'number' ? x.toFixed(d) : '—';
@@ -342,6 +349,22 @@ async function muat() {
         }
       }
     });
+
+    // Proyeksi dasarian berjalan: 0 label, 1 tgl, 2 hari obs, 3 mm obs, 4 hari fc, 5 mm fc, 6 hari belum tercakup,
+    // 7 total diketahui, 8 batas bawah, 9 batas atas, 10-12 peluang, 13 status kalibrasi, 14 catatan
+    const PR = (L.Proyeksi_Dasarian || []).filter(r => r[0] && r[0] !== '—');
+    $('pry').innerHTML = PR.length ? `<table>
+      <thead><tr><th>Periode</th><th>Teramati</th><th>Prakiraan</th><th>Belum Tercakup</th><th>Total Diketahui</th><th>Batas Tercile</th><th>Peluang (Bawah / Normal / Atas)</th></tr></thead>
+      <tbody>${PR.map(r => `<tr>
+        <td><b>${E(fmtDasarian(r[0]))}</b><br><span class="sub">${E(r[1])}</span></td>
+        <td>${N(r[3], 1)} mm <span class="sub">(${E(r[2])} hari)</span></td>
+        <td>${N(r[5], 1)} mm <span class="sub">(${E(r[4])} hari)</span></td>
+        <td>${E(r[6])} hari</td>
+        <td><b>${N(r[7], 1)} mm</b></td>
+        <td>${N(r[8], 0)} / ${N(r[9], 0)} mm</td>
+        <td>${bar(r, { pB: 10, pN: 11, pA: 12 }, false)}</td>
+      </tr>`).join('')}</tbody></table>` : '<span class="sub">Belum ada dasarian yang dapat diproyeksikan.</span>';
+    $('pryStatus').textContent = PR.length ? String(PR[0][13] || '') : '';
 
     $('das').innerHTML = tabel([
         { nama: 'ONI (' + prediktor(L.Prakiraan_Dasarian, 3) + ')', rows: L.Prakiraan_Dasarian },
