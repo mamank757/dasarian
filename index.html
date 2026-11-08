@@ -33,7 +33,7 @@
     h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 4px; color: #fff; }
     h2 { font-size: 1.05rem; margin: 0 0 12px; color: #38bdf8; font-weight: 600; }
     .sub { color: var(--mu); font-size: 0.8rem; }
-    
+
     .card {
       background: var(--card);
       border: 1px solid var(--line);
@@ -76,6 +76,7 @@
     tbody tr:hover { background: var(--card-hover); }
 
     .bar-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .bar-wrap.dim { opacity: 0.4; }
     .bar {
       display: flex;
       height: 10px;
@@ -89,7 +90,7 @@
     .b0 { background: var(--warn); }
     .b1 { background: #64748b; }
     .b2 { background: var(--bl); }
-    
+
     .tag {
       display: inline-block;
       padding: 3px 9px;
@@ -102,6 +103,7 @@
     .t-b  { background: rgba(239, 68, 68, 0.15); color: var(--bad); border: 1px solid rgba(239, 68, 68, 0.3); }
 
     .note { font-size: 0.75rem; color: var(--mu); margin-top: 10px; line-height: 1.4; }
+    .note.warn { color: var(--warn); }
     #err {
       display: none;
       background: rgba(239, 68, 68, 0.15);
@@ -118,7 +120,7 @@
 
   <h1>Dashboard Iklim &amp; Prakiraan — Kabupaten Wajo</h1>
   <div class="sub" id="upd">Memuat data terkini...</div>
-  
+
   <div id="err"></div>
   <div class="grid" id="kpi"></div>
 
@@ -131,15 +133,19 @@
     <h2>Prakiraan 3 Dasarian Ke Depan (Analog ENSO)</h2>
     <div class="table-container" id="das"></div>
     <div class="note">
-      Kategori Probabilitas: <span class="tag t-w">Bawah Normal</span> <span class="tag" style="background:rgba(100,116,139,0.2);color:#cbd5e1">Normal</span> <span class="tag" style="background:rgba(59,130,246,0.2);color:#93c5fd">Atas Normal</span>. 
-      <br><i>Hit-rate = hasil uji leave-one-out data historis (acuan tebakan acak ≈ 33%).</i>
+      Kategori Probabilitas: <span class="tag t-w">Bawah Normal</span> <span class="tag" style="background:rgba(100,116,139,0.2);color:#cbd5e1">Normal</span> <span class="tag" style="background:rgba(59,130,246,0.2);color:#93c5fd">Atas Normal</span>.
+      Baris yang <b>dipudarkan</b> memiliki hit-rate uji di bawah 40% (setara tebakan acak): abaikan, pakai klimatologi.
+      <br><i>Hit-rate = hasil uji leave-one-out data historis (acuan tebakan acak ≈ 33%). Dengan sekitar 27 tahun data, galat hit-rate ±9 poin, jadi selisih kecil bukan bukti skill.</i>
+    </div>
+    <div class="note warn">
+      Catatan data: hujan Wajo 1997–2019 berasal dari 1 pos, sejak 2020 dari rata-rata ±7 pos. Rata-rata banyak pos meredam ekstrem, sehingga tercile dan tahun analog era lama tidak sepenuhnya sebanding.
     </div>
   </div>
 
   <div class="card">
     <h2>Model Gabungan ENSO + Gelombang (MJO · Kelvin · Rossby)</h2>
     <div class="table-container" id="mdl"></div>
-    <div class="note">Peluang dihitung dari tetangga terdekat pada kondisi prediktor terkini (uji leave-one-year-out). Nilai <b>BSS &gt; 0</b> menunjukkan performa lebih baik dari klimatologi; simbol ★ mengindikasikan varian terbaik. Tanpa ★, gunakan acuan klimatologi.</div>
+    <div class="note">Peluang dihitung dari tetangga terdekat pada kondisi prediktor terkini (uji leave-one-year-out). Nilai <b>BSS &gt; 0</b> menunjukkan performa lebih baik dari klimatologi; simbol ★ menandai varian terbaik (BSS &gt; 0,05). Baris yang dipudarkan tidak lebih baik dari klimatologi: gunakan acuan klimatologi. Dasarian yang sudah berjalan dihitung untuk "N hari ke depan", bukan dasarian kalender.</div>
   </div>
 
   <div class="card">
@@ -156,7 +162,7 @@
   <div class="card">
     <h2>Verifikasi Prakiraan Terhadap Hujan Teramati</h2>
     <div class="table-container" id="ver"></div>
-    <div class="note">Tabel atas: evaluasi model harian vs pengamatan pos hujan Wajo. Tabel bawah: verifikasi dasarian (BSS &gt; 0 = lebih akurat dibanding klimatologi). Kestabilan statistik tercapai jika sampel mencukupi (≥30 hari, ≥10 dasarian).</div>
+    <div class="note">Tabel atas: evaluasi model harian vs rata-rata pos hujan Wajo (prakiraan adalah satu titik grid). Bandingkan akurasi dengan <b>akurasi "selalu kering"</b>: bila hari hujan jarang, akurasi tinggi bisa dicapai tanpa kemampuan apa pun. <b>HSS</b> 0 = setara acak, 1 = sempurna. Tabel bawah: verifikasi dasarian (BSS &gt; 0 = lebih akurat dibanding klimatologi). Kestabilan statistik tercapai jika sampel mencukupi (≥30 hari, ≥10 dasarian).</div>
   </div>
 
   <div class="card">
@@ -169,18 +175,18 @@
   </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbyEcmPJbgfhfpG3RM_AYqNK76KnFfPI3HvJ8_xLFd7iiSaYi8Ut0ptkeorJ-IABeDNiuw/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzanUAio_glDxFxuXuGmRstWdn1jv_bgHMVBcz-HVXbS4Dwr7OrPguBIey0UD_oo1ItxA/exec';
 
 const $ = id => document.getElementById(id);
 const N = (x, d = 0) => typeof x === 'number' ? x.toFixed(d) : '—';
-const E = s => String(s ?? '—').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const E = s => String(s ?? '—').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Helper Format Tanggal
+// Helper Format Tanggal (tanggal "YYYY-MM-DD" dibaca sebagai UTC, maka ditampilkan dengan zona UTC agar tidak bergeser sehari)
 function fmtTgl(strDate) {
   if (!strDate) return '—';
   const d = new Date(strDate);
   if (isNaN(d.getTime())) return strDate;
-  return new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: '2-digit', month: 'short' }).format(d);
+  return new Intl.DateTimeFormat('id-ID', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' }).format(d);
 }
 
 function fmtDasarian(codeStr) {
@@ -195,6 +201,14 @@ function fmtDasarian(codeStr) {
   return codeStr;
 }
 
+// Bulan prediktor diambil dari data ("2026-09 = 2.5" -> "2026-09"), bukan ditulis tetap
+const prediktor = (rows, kol) => (rows && rows[0] && rows[0][kol]) ? String(rows[0][kol]).split(' ')[0] : '—';
+const median = a => {
+  if (!a.length) return NaN;
+  const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
 Chart.defaults.color = '#94a3b8';
 Chart.defaults.borderColor = '#1c2d4a';
 let ch = {};
@@ -206,27 +220,29 @@ function chart(id, cfg) {
 
 const DAS = { pB: 15, pN: 16, pA: 17, k: 5, a: 13, l: 20 };
 const BLN = { pB: 11, pN: 12, pA: 13, k: 3, a: 9, l: 15 };
+const AMBANG_ACAK = 40;     // hit-rate di bawah ini = setara tebakan acak
+const AMBANG_INDIKATIF = 55; // n ≈ 27 tahun: 50% belum cukup jauh dari 33% setelah memperhitungkan galat ±9 poin
 
 function tag(l) {
   if (typeof l !== 'number') return '<span class="tag t-b">Tanpa Uji</span>';
-  return l >= 50 ? `<span class="tag t-ok">${l}% · Ada Skill</span>` :
-         l >= 40 ? `<span class="tag t-w">${l}% · Lemah</span>` :
-                   `<span class="tag t-b">${l}% · ≈ Acak</span>`;
+  return l >= AMBANG_INDIKATIF ? `<span class="tag t-ok">${l}% · Indikatif</span>` :
+         l >= AMBANG_ACAK      ? `<span class="tag t-w">${l}% · Lemah</span>` :
+                                 `<span class="tag t-b">${l}% · ≈ Acak</span>`;
 }
 
-function bar(r, m) {
+function bar(r, m, dim) {
   const a = r[m.pB], b = r[m.pN], c = r[m.pA];
   if (typeof a !== 'number') {
     return `<span class="sub" title="${E(r[r.length - 1])}">Tidak tersedia</span>`;
   }
   return `
-    <div class="bar-wrap">
+    <div class="bar-wrap${dim ? ' dim' : ''}"${dim ? ' title="Tidak lebih baik dari klimatologi: abaikan"' : ''}>
       <div class="bar" title="Bawah ${a}% · Normal ${b}% · Atas ${c}%">
         <i class="b0" style="width:${a}%"></i>
         <i class="b1" style="width:${b}%"></i>
         <i class="b2" style="width:${c}%"></i>
       </div>
-      <span class="sub" style="font-size:0.7rem">${a}% / ${b}% / ${c}%</span>
+      <span class="sub" style="font-size:0.7rem">${a}% / ${b}% / ${c}%${dim ? ' · abaikan' : ''}</span>
     </div>`;
 }
 
@@ -241,19 +257,20 @@ function tabel(sets, m, withTgl) {
         <th>Hit-Rate Uji</th>
       </tr>
     </thead><tbody>`;
-    
-  const n = Math.max(...sets.map(s => s.rows.length));
+
+  const n = Math.max(0, ...sets.map(s => s.rows.length));
   for (let i = 0; i < n; i++) {
     sets.forEach(s => {
       const r = s.rows[i];
       if (!r) return;
       const tglSub = withTgl && r[1] ? `<br><span class="sub">${E(r[1])}</span>` : '';
       const periodLabel = withTgl ? fmtDasarian(r[0]) : E(r[0]);
-      
+      const dim = typeof r[m.l] === 'number' && r[m.l] < AMBANG_ACAK;
+
       h += `<tr>
         <td><b>${E(periodLabel)}</b>${tglSub}</td>
         <td>${E(s.nama)}</td>
-        <td>${bar(r, m)}</td>
+        <td>${bar(r, m, dim)}</td>
         <td><b>${N(r[m.k])} mm</b> → <span style="color:var(--bl)">${N(r[m.a])} mm</span></td>
         <td>${tag(r[m.l])}</td>
       </tr>`;
@@ -266,12 +283,17 @@ async function muat() {
   try {
     const j = await (await fetch(API + '?t=' + Date.now())).json();
     const L = j.lembar;
-    
+
     $('err').style.display = 'none';
-    
-    const dUpd = new Date(j.diperbarui);
-    const timeStr = isNaN(dUpd.getTime()) ? '—' : dUpd.toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-    $('upd').textContent = `Diperbarui: ${timeStr} WITA · Otomatis menyegarkan tiap 10 menit`;
+
+    // Waktu pembaruan: kosong bila belum pernah berhasil (new Date(null) = 1970, jangan ditampilkan)
+    const dUpd = j.diperbarui ? new Date(j.diperbarui) : null;
+    const timeStr = (dUpd && !isNaN(dUpd.getTime()))
+      ? dUpd.toLocaleString('id-ID', { timeZone: 'Asia/Makassar' }) + ' WITA'
+      : 'belum ada pembaruan yang berhasil';
+    let info = `Diperbarui: ${timeStr} · Otomatis menyegarkan tiap 10 menit`;
+    if (j.galat) info += ` · ⚠ Pembaruan terakhir sebagian gagal: ${String(j.galat).slice(0, 160)}`;
+    $('upd').textContent = info;
 
     const hr = L.Cuaca_Harian;
     const st = L.Status_ENSO;
@@ -279,7 +301,8 @@ async function muat() {
     const tot = hr.reduce((s, r) => s + (+r[1] || 0), 0);
     const aktif = gl.filter(r => r[6] === 'Ya').length;
     const dasAll = [...L.Prakiraan_Dasarian, ...L.Prakiraan_Dasarian_N34];
-    const best = Math.max(0, ...dasAll.map(r => +r[20] || 0));
+    // Median, bukan maksimum: maksimum dari beberapa uji cenderung melebih-lebihkan skill (seleksi bias)
+    const medHit = median(dasAll.map(r => r[20]).filter(x => typeof x === 'number'));
 
     $('kpi').innerHTML = [
       [st[0] ? N(st[0][1], 1) : '—', 'ONI Terakhir'],
@@ -287,7 +310,7 @@ async function muat() {
       [(L.MJO_RMM_Terkini.length ? 'Fase ' + L.MJO_RMM_Terkini.slice(-1)[0][3] + ' · ' + N(L.MJO_RMM_Terkini.slice(-1)[0][4], 1) : '—'), 'MJO (RMM) Terkini'],
       [N(tot, 1) + ' mm', 'Total Hujan Model 7 Hari'],
       [aktif + ' / ' + gl.length, 'Gelombang Atmosfer Aktif'],
-      [best + '%', 'Hit-Rate Tertinggi (6 Uji)']
+      [isNaN(medHit) ? '—' : N(medHit, 0) + '%', 'Hit-Rate Median (6 Uji · acak ≈ 33%)']
     ].map(([a, b]) => `<div class="kpi"><b>${a}</b><span>${b}</span></div>`).join('');
 
     // Chart 7 Hari
@@ -303,53 +326,62 @@ async function muat() {
         maintainAspectRatio: false,
         plugins: { legend: { position: 'top' } },
         scales: {
-          y: { 
-            beginAtZero: true, 
+          y: {
+            beginAtZero: true,
             title: { display: true, text: 'Hujan (mm)', color: '#94a3b8' },
             ticks: { color: '#94a3b8' }
           },
-          y1: { 
-            position: 'right', 
-            min: 0, 
-            max: 100, 
-            grid: { display: false }, 
-            title: { display: true, text: 'Awan (%)', color: '#f59e0b' }, // Label sumbu jadi oranye
-            ticks: { color: '#f59e0b' } // Angka 0-100 jadi oranye
+          y1: {
+            position: 'right',
+            min: 0,
+            max: 100,
+            grid: { display: false },
+            title: { display: true, text: 'Awan (%)', color: '#f59e0b' },
+            ticks: { color: '#f59e0b' }
           }
         }
       }
     });
-    $('das').innerHTML = tabel([{ nama: 'ONI (Agu)', rows: L.Prakiraan_Dasarian }, { nama: 'Niño 3.4 (Okt)', rows: L.Prakiraan_Dasarian_N34 }], DAS, true) +
-      (best < 45 ? '<div class="note" style="color:var(--warn)">⚠️ Hit-rate setara tebakan acak. Gunakan acuan klimatologi dan pengamatan riil.</div>' : '');
 
-    $('bln').innerHTML = tabel([{ nama: 'ONI (Agu)', rows: L.Prakiraan_Bulanan_ENSO }, { nama: 'Niño 3.4 (Okt)', rows: L.Prakiraan_Bulanan_N34 }], BLN, false);
+    $('das').innerHTML = tabel([
+        { nama: 'ONI (' + prediktor(L.Prakiraan_Dasarian, 3) + ')', rows: L.Prakiraan_Dasarian },
+        { nama: 'Niño 3.4 (' + prediktor(L.Prakiraan_Dasarian_N34, 3) + ')', rows: L.Prakiraan_Dasarian_N34 }
+      ], DAS, true) +
+      ((isNaN(medHit) || medHit < 50) ? '<div class="note warn">⚠️ Hit-rate median setara tebakan acak. Gunakan acuan klimatologi dan pengamatan riil.</div>' : '');
+
+    $('bln').innerHTML = tabel([
+      { nama: 'ONI (' + prediktor(L.Prakiraan_Bulanan_ENSO, 2) + ')', rows: L.Prakiraan_Bulanan_ENSO },
+      { nama: 'Niño 3.4 (' + prediktor(L.Prakiraan_Bulanan_N34, 2) + ')', rows: L.Prakiraan_Bulanan_N34 }
+    ], BLN, false);
 
     // Tabel Model Gelombang
     const M = L.Model_Gelombang;
     let hm = `<table><thead><tr>
       <th>Periode</th><th>Varian Model</th><th>Peluang (Bawah / Normal / Atas)</th><th>Hit-Rate</th><th>BSS</th><th>Terbaik</th>
     </tr></thead><tbody>`;
-    
+
     M.forEach(r => {
       const b = r[8];
-      const c = typeof b !== 'number' ? '' : b > 0.05 ? 't-ok' : b > 0 ? 't-w' : 't-b';
+      const adalahKlim = String(r[2]).indexOf('Klimatologi') === 0;
+      const c = (typeof b !== 'number' || adalahKlim) ? '' : b > 0.05 ? 't-ok' : b > 0 ? 't-w' : 't-b';
+      const dim = !adalahKlim && typeof b === 'number' && b <= 0;
       hm += `<tr>
         <td><b>${E(fmtDasarian(r[0]))}</b><br><span class="sub">${E(r[1])}</span></td>
         <td>${E(r[2])}</td>
-        <td>${bar(r, { pB: 4, pN: 5, pA: 6 })}</td>
+        <td>${bar(r, { pB: 4, pN: 5, pA: 6 }, dim)}</td>
         <td>${typeof r[7] === 'number' ? r[7] + '%' : '—'}</td>
         <td>${c ? `<span class="tag ${c}">${N(b, 3)}</span>` : '—'}</td>
-        <td style="text-align:center; color:var(--warn); font-size:1.1rem">${r[9] === 'Ya' ? '★' : ''}</td>
+        <td style="text-align:center; color:var(--warn); font-size:1.1rem">${(!adalahKlim && r[9] === 'Ya') ? '★' : ''}</td>
       </tr>`;
     });
     $('mdl').innerHTML = hm + '</tbody></table>';
 
-    // Chart Dasarian
+    // Chart Dasarian (label diberi "D-" agar cocok dengan pola fmtDasarian)
     const wd = L.Wajo_Dasarian;
     chart('cd', {
       type: 'bar',
       data: {
-        labels: wd.map(r => fmtDasarian(r[0] + ' ' + r[1])),
+        labels: wd.map(r => fmtDasarian(r[0] + ' D-' + r[1])),
         datasets: [{
           label: 'Hujan (mm)',
           data: wd.map(r => r[2]),
@@ -368,17 +400,20 @@ async function muat() {
     const VH = L.Verifikasi_Harian || [];
     const VD = L.Verifikasi_Dasarian || [];
     const P = x => typeof x === 'number' ? x + '%' : '—';
-    
+    const leadLabel = x => /^\d+$/.test(String(x)) ? 'Hari ke-' + x : String(x);
+
+    // Kolom Verifikasi_Harian: 0 lead, 1 pasangan, 2 prakiraan, 3 teramati, 4 bias, 5 MAE, 6 korelasi,
+    // 7 akurasi, 8 POD, 9 FAR, 10 faktor koreksi, 11 akurasi selalu kering, 12 HSS, 13 CSI, 14 catatan
     $('ver').innerHTML = `
       <table>
         <thead>
           <tr>
-            <th>Lead (Hari)</th><th>Pasangan</th><th>Prakiraan</th><th>Teramati</th><th>Bias</th><th>MAE</th><th>Korelasi</th><th>Akurasi (≥1mm)</th><th>POD</th><th>FAR</th><th>Catatan</th>
+            <th>Lead (Hari)</th><th>Pasangan</th><th>Prakiraan</th><th>Teramati</th><th>Bias</th><th>MAE</th><th>Korelasi</th><th>Akurasi (≥1mm)</th><th>Akurasi "Selalu Kering"</th><th>HSS</th><th>CSI</th><th>POD</th><th>FAR</th><th>Catatan</th>
           </tr>
         </thead>
         <tbody>
           ${VH.map(r => `<tr>
-            <td><b>Hari ke-${E(r[0])}</b></td>
+            <td><b>${E(leadLabel(r[0]))}</b></td>
             <td>${E(r[1])}</td>
             <td>${N(r[2], 1)} mm</td>
             <td>${N(r[3], 1)} mm</td>
@@ -386,9 +421,12 @@ async function muat() {
             <td>${N(r[5], 1)}</td>
             <td>${N(r[6], 2)}</td>
             <td>${P(r[7])}</td>
+            <td>${P(r[11])}</td>
+            <td>${N(r[12], 2)}</td>
+            <td>${N(r[13], 2)}</td>
             <td>${P(r[8])}</td>
             <td>${P(r[9])}</td>
-            <td class="sub" style="white-space:normal">${E(r[11] || '')}</td>
+            <td class="sub" style="white-space:normal">${E(r[14] || '')}</td>
           </tr>`).join('')}
         </tbody>
       </table>
