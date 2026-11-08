@@ -303,12 +303,22 @@ async function muat() {
         maintainAspectRatio: false,
         plugins: { legend: { position: 'top' } },
         scales: {
-          y: { beginAtZero: true, title: { display: true, text: 'Hujan (mm)' } },
-          y1: { position: 'right', min: 0, max: 100, grid: { display: false }, title: { display: true, text: 'Awan (%)' } }
+          y: { 
+            beginAtZero: true, 
+            title: { display: true, text: 'Hujan (mm)', color: '#94a3b8' },
+            ticks: { color: '#94a3b8' }
+          },
+          y1: { 
+            position: 'right', 
+            min: 0, 
+            max: 100, 
+            grid: { display: false }, 
+            title: { display: true, text: 'Awan (%)', color: '#f59e0b' }, // Label sumbu jadi oranye
+            ticks: { color: '#f59e0b' } // Angka 0-100 jadi oranye
+          }
         }
       }
     });
-
     $('das').innerHTML = tabel([{ nama: 'ONI (Agu)', rows: L.Prakiraan_Dasarian }, { nama: 'Niño 3.4 (Okt)', rows: L.Prakiraan_Dasarian_N34 }], DAS, true) +
       (best < 45 ? '<div class="note" style="color:var(--warn)">⚠️ Hit-rate setara tebakan acak. Gunakan acuan klimatologi dan pengamatan riil.</div>' : '');
 
