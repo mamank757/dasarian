@@ -125,8 +125,15 @@
   <div class="grid" id="kpi"></div>
 
   <div class="card">
-    <h2>Prakiraan 7 Hari Ke Depan (Model Harian)</h2>
+    <h2 id="h7">Prakiraan 7 Hari Ke Depan (Model Harian)</h2>
     <div class="ch"><canvas id="c7"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>Prakiraan 7 Hari Ensemble Multi-Model (Rata-rata Area)</h2>
+    <div class="table-container" id="ens"></div>
+    <div class="note">Rata-rata beberapa model cuaca dan beberapa titik di sekitar lokasi, setara skala pos hujan yang diamati. <b>Sebaran</b> antar model adalah ukuran ketidakpastian: makin besar, makin tidak pasti. <b>Peluang ensemble</b> = persentase model yang meramal hujan ≥1 mm; <b>cakupan titik</b> = persentase titik-model yang meramal ≥1 mm.</div>
+    <div class="note warn" id="ensNote"></div>
   </div>
 
   <div class="card">
@@ -173,6 +180,12 @@
   </div>
 
   <div class="card">
+    <h2>Verifikasi: Ensemble vs Titik Tunggal</h2>
+    <div class="table-container" id="verE"></div>
+    <div class="note">Semua produk dibandingkan pada pasangan prakiraan–pengamatan yang sama. Ensemble menjadi prakiraan utama hanya bila MAE-nya tidak lebih buruk dan korelasinya tidak lebih rendah daripada titik tunggal (minimal 60 pasangan).</div>
+  </div>
+
+  <div class="card">
     <h2>Dinamika Gelombang Atmosfer (NOAA OLR)</h2>
     <div class="table-container" id="gel"></div>
   </div>
@@ -182,7 +195,7 @@
   </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbwJJYwVuJ4cSRtIUm95SyH8YbMwpg7yQ1qdhQrHFxtcq6znBrqHX21VoyLcBx2RDBpHXg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxrhP4ZnqnFlJqm1ChGpzkMDtKkb6k5tT2pCuSwECkIoKH_LBflc5K4dLdQk589Vzx_fQ/exec';
 
 const $ = id => document.getElementById(id);
 const N = (x, d = 0) => typeof x === 'number' ? x.toFixed(d) : '—';
@@ -305,7 +318,9 @@ async function muat() {
     const hr = L.Cuaca_Harian;
     const st = L.Status_ENSO;
     const gl = L.Gelombang_Terkini;
-    const tot = hr.reduce((s, r) => s + (+r[1] || 0), 0);
+    const EN = L.Cuaca_Ensemble || [];
+    const pakaiEns = j.sumberPrakiraan === 'ensemble' && EN.length > 0;   // ensemble hanya jadi utama bila terbukti lebih baik
+    const tot = pakaiEns ? EN.reduce((s, r) => s + (+r[2] || 0), 0) : hr.reduce((s, r) => s + (+r[1] || 0), 0);
     const aktif = gl.filter(r => r[6] === 'Ya').length;
     const dasAll = [...L.Prakiraan_Dasarian, ...L.Prakiraan_Dasarian_N34];
     // Median, bukan maksimum: maksimum dari beberapa uji cenderung melebih-lebihkan skill (seleksi bias)
@@ -315,20 +330,30 @@ async function muat() {
       [st[0] ? N(st[0][1], 1) : '—', 'ONI Terakhir'],
       [st[1] ? N(st[1][1], 1) + ' °C' : '—', 'SSTA Niño 3.4 (Mingguan)'],
       [(L.MJO_RMM_Terkini.length ? 'Fase ' + L.MJO_RMM_Terkini.slice(-1)[0][3] + ' · ' + N(L.MJO_RMM_Terkini.slice(-1)[0][4], 1) : '—'), 'MJO (RMM) Terkini'],
-      [N(tot, 1) + ' mm', 'Total Hujan Model 7 Hari'],
+      [N(tot, 1) + ' mm', pakaiEns ? 'Total Hujan Ensemble 7 Hari' : 'Total Hujan Model 7 Hari'],
       [aktif + ' / ' + gl.length, 'Gelombang Atmosfer Aktif'],
       [isNaN(medHit) ? '—' : N(medHit, 0) + '%', 'Hit-Rate Median (6 Uji · acak ≈ 33%)']
     ].map(([a, b]) => `<div class="kpi"><b>${a}</b><span>${b}</span></div>`).join('');
 
     // Chart 7 Hari
+    $('h7').textContent = pakaiEns ? 'Prakiraan 7 Hari Ke Depan (Ensemble Multi-Model)' : 'Prakiraan 7 Hari Ke Depan (Model Harian)';
+    const s7 = pakaiEns ? {
+      labels: EN.map(r => fmtTgl(r[0])),
+      datasets: [
+        { type: 'bar', label: 'Hujan ensemble (mm)', data: EN.map(r => r[2]), backgroundColor: '#3b82f6', borderRadius: 4, yAxisID: 'y' },
+        { type: 'line', label: 'Model tertinggi (mm)', data: EN.map(r => r[4]), borderColor: '#93c5fd', borderDash: [4, 4], borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+        { type: 'line', label: 'Model terendah (mm)', data: EN.map(r => r[3]), borderColor: '#64748b', borderDash: [4, 4], borderWidth: 1, pointRadius: 0, yAxisID: 'y' },
+        { type: 'line', label: 'Tutupan Awan (%)', data: EN.map(r => r[8]), borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.3, yAxisID: 'y1' }
+      ]
+    } : {
+      labels: hr.map(r => fmtTgl(r[0])),
+      datasets: [
+        { type: 'bar', label: 'Hujan (mm)', data: hr.map(r => r[1]), backgroundColor: '#3b82f6', borderRadius: 4, yAxisID: 'y' },
+        { type: 'line', label: 'Tutupan Awan (%)', data: hr.map(r => r[4]), borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.3, yAxisID: 'y1' }
+      ]
+    };
     chart('c7', {
-      data: {
-        labels: hr.map(r => fmtTgl(r[0])),
-        datasets: [
-          { type: 'bar', label: 'Hujan (mm)', data: hr.map(r => r[1]), backgroundColor: '#3b82f6', borderRadius: 4, yAxisID: 'y' },
-          { type: 'line', label: 'Tutupan Awan (%)', data: hr.map(r => r[4]), borderColor: '#f59e0b', backgroundColor: '#f59e0b', borderWidth: 2, tension: 0.3, yAxisID: 'y1' }
-        ]
-      },
+      data: s7,
       options: {
         maintainAspectRatio: false,
         plugins: { legend: { position: 'top' } },
@@ -349,6 +374,21 @@ async function muat() {
         }
       }
     });
+
+    // Ensemble: 0 tanggal, 1 lead, 2 rata-rata, 3 min, 4 maks, 5 sebaran, 6 peluang, 7 cakupan, 8 awan, 9 jumlah model, 10 jumlah titik
+    $('ens').innerHTML = EN.length ? `<table>
+      <thead><tr><th>Tanggal</th><th>Hujan Ensemble</th><th>Rentang Model</th><th>Sebaran</th><th>Peluang Ensemble</th><th>Cakupan Titik</th><th>Awan</th></tr></thead>
+      <tbody>${EN.map(r => `<tr>
+        <td><b>${fmtTgl(r[0])}</b></td>
+        <td><b>${N(r[2], 1)} mm</b></td>
+        <td>${N(r[3], 1)} – ${N(r[4], 1)} mm</td>
+        <td>${N(r[5], 1)} mm</td>
+        <td>${typeof r[6] === 'number' ? r[6] + '%' : '—'}</td>
+        <td>${typeof r[7] === 'number' ? r[7] + '%' : '—'}</td>
+        <td>${typeof r[8] === 'number' ? r[8] + '%' : '—'}</td>
+      </tr>`).join('')}</tbody></table>` : '<span class="sub">Belum ada data ensemble (cek galat pembaruan di bagian atas).</span>';
+    $('ensNote').textContent = 'Prakiraan utama saat ini: ' + (pakaiEns ? 'ensemble (terbukti lebih baik pada verifikasi)' : 'titik tunggal (ensemble belum terbukti lebih baik)') +
+      (EN[0] ? ` · ${EN[0][9]} model · ${EN[0][10]} titik` : '');
 
     // Proyeksi dasarian berjalan: 0 label, 1 tgl, 2 hari obs, 3 mm obs, 4 hari fc, 5 mm fc, 6 hari belum tercakup,
     // 7 total diketahui, 8 batas bawah, 9 batas atas, 10-12 peluang, 13 status kalibrasi, 14 catatan
@@ -471,6 +511,16 @@ async function muat() {
           </tr>`).join('')}
         </tbody>
       </table>`;
+
+    // Verifikasi ensemble: kolom sama dengan Verifikasi_Harian (0 produk, 1 pasangan, ..., 12 HSS, 13 CSI, 14 catatan)
+    const VE = (L.Verifikasi_Ensemble || []).filter(r => r[0]);
+    $('verE').innerHTML = VE.length ? `<table>
+      <thead><tr><th>Produk</th><th>Pasangan</th><th>Prakiraan</th><th>Teramati</th><th>Bias</th><th>MAE</th><th>Korelasi</th><th>Akurasi (≥1mm)</th><th>Akurasi "Selalu Kering"</th><th>HSS</th><th>CSI</th><th>POD</th><th>FAR</th><th>Catatan</th></tr></thead>
+      <tbody>${VE.map(r => `<tr>
+        <td><b>${E(r[0])}</b></td><td>${E(r[1])}</td><td>${N(r[2], 1)} mm</td><td>${N(r[3], 1)} mm</td><td>${N(r[4], 1)}</td>
+        <td>${N(r[5], 2)}</td><td>${N(r[6], 2)}</td><td>${P(r[7])}</td><td>${P(r[11])}</td><td>${N(r[12], 2)}</td><td>${N(r[13], 2)}</td>
+        <td>${P(r[8])}</td><td>${P(r[9])}</td><td class="sub" style="white-space:normal">${E(r[14] || '')}</td>
+      </tr>`).join('')}</tbody></table>` : '<span class="sub">Belum ada verifikasi ensemble.</span>';
 
     // Gelombang Atmosfer
     $('gel').innerHTML = `
