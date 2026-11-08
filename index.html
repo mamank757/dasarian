@@ -182,7 +182,7 @@
   <div class="card">
     <h2>Verifikasi: Ensemble vs Titik Tunggal</h2>
     <div class="table-container" id="verE"></div>
-    <div class="note">Semua produk dibandingkan pada pasangan prakiraan–pengamatan yang sama. Ensemble menjadi prakiraan utama hanya bila MAE-nya tidak lebih buruk dan korelasinya tidak lebih rendah daripada titik tunggal (minimal 60 pasangan).</div>
+    <div class="note">Semua produk dibandingkan pada pasangan prakiraan–pengamatan yang sama. Ensemble menjadi prakiraan utama hanya bila korelasi dan HSS-nya tidak lebih rendah daripada titik tunggal <b>dan</b> sampel memuat minimal 30 hari hujan; sebelum itu statusnya hanya "indikasi". <b>Baca MAE bersama baris "Tebak nol"</b>: di musim kering, menebak kering terus sudah ber-MAE sama dengan rata-rata teramati, jadi MAE rendah belum berarti ada skill.</div>
   </div>
 
   <div class="card">
@@ -195,7 +195,7 @@
   </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbxrhP4ZnqnFlJqm1ChGpzkMDtKkb6k5tT2pCuSwECkIoKH_LBflc5K4dLdQk589Vzx_fQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzkx3d6PHC691XE9XfAsGU504jdEQW9d-l9x_akK8sNwaDxSqGka-8zx6Mmcrg3lrbtbQ/exec';
 
 const $ = id => document.getElementById(id);
 const N = (x, d = 0) => typeof x === 'number' ? x.toFixed(d) : '—';
@@ -387,8 +387,12 @@ async function muat() {
         <td>${typeof r[7] === 'number' ? r[7] + '%' : '—'}</td>
         <td>${typeof r[8] === 'number' ? r[8] + '%' : '—'}</td>
       </tr>`).join('')}</tbody></table>` : '<span class="sub">Belum ada data ensemble (cek galat pembaruan di bagian atas).</span>';
-    $('ensNote').textContent = 'Prakiraan utama saat ini: ' + (pakaiEns ? 'ensemble (terbukti lebih baik pada verifikasi)' : 'titik tunggal (ensemble belum terbukti lebih baik)') +
-      (EN[0] ? ` · ${EN[0][9]} model · ${EN[0][10]} titik` : '');
+    const [stE, nHE] = String(j.statusEnsemble || 'belum|0').split('|');
+    const ketE = stE === 'terbukti' ? 'ensemble, terbukti lebih baik pada verifikasi (' + nHE + ' hari hujan)'
+      : stE === 'indikasi' ? (pakaiEns ? 'ensemble, tetapi baru indikasi lebih baik (' + nHE + ' hari hujan, belum terbukti)'
+                                        : 'titik tunggal. Ensemble tampak lebih baik pada sampel, tetapi belum terbukti (baru ' + nHE + ' hari hujan dari minimal 30)')
+      : 'titik tunggal (ensemble belum lebih baik pada verifikasi)';
+    $('ensNote').textContent = 'Prakiraan utama saat ini: ' + ketE + (EN[0] ? ` · ${EN[0][9]} model · ${EN[0][10]} titik` : '');
 
     // Proyeksi dasarian berjalan: 0 label, 1 tgl, 2 hari obs, 3 mm obs, 4 hari fc, 5 mm fc, 6 hari belum tercakup,
     // 7 total diketahui, 8 batas bawah, 9 batas atas, 10-12 peluang, 13 status kalibrasi, 14 catatan
